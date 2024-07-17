@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
+
+import "@openzeppelin/contracts@4.7.0/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts@4.7.0/access/Ownable.sol";
+
+contract TechToken is ERC20, Ownable {
+    string[] private deviceCatalog = [
+        "Laptop", 
+        "Smartphone", 
+        "Headphones", 
+        "Smartwatch", 
+        "VR Gear", 
+        "Bluetooth Speaker", 
+        "Tablet", 
+        "Drone", 
+        "Game Console", 
+        "Camera"
+    ];
+    address private shopAddress;
+    mapping(address => string) private claimedDevices;
+
+    event TokensIssued(address indexed recipient, uint256 quantity);
+    event TokensDestroyed(address indexed holder, uint256 quantity);
+    event DeviceClaimed(address indexed user, string device);
+
+    constructor() ERC20("TechToken", "TCH") {
+        shopAddress = msg.sender; 
+    }
+
+    function issueTokens(address recipient, uint256 quantity) external onlyOwner {
+        _mint(recipient, quantity);
+        emit TokensIssued(recipient, quantity);
+    }
+
+    function destroyTokens(uint256 quantity) external {
+        _burn(msg.sender, quantity);
+        emit TokensDestroyed(msg.sender, quantity);
+    }
+
+    function claimDevice() external {
+        uint256 userBalance = balanceOf(msg.sender);
+        require(userBalance > 0, "Not enough tokens to claim a device");
+
+        _burn(msg.sender, userBalance);
+
+        string memory device = deviceCatalog[_random() % deviceCatalog.length];
+
+        claimedDevices[msg.sender] = device;
+
+        emit DeviceClaimed(msg.sender, device);
+    }
+
+    function getClaimedDevice(address user) external view returns (string memory) {
+        return claimedDevices[user];
+    }
+
+    function transfer(address recipient, uint256 quantity) public virtual override returns (bool) {
+        require(recipient != address(0), "ERC20: transfer to the zero address");
+        _transfer(_msgSender(), recipient, quantity);
+        return true;
+    }
+
+    function _random() private view returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(block.timestamp, blockhash(block.number - 1))));
+    }
+
+    function updateShopAddress(address newShopAddress) external onlyOwner {
+        shopAddress = newShopAddress;
+    }
+}
